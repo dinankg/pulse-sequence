@@ -1,0 +1,7 @@
+Total number of unique cores
+4
+fname	duration(us)	hasRF?	hasDAQ? hastrigout?
+readout.mod	0	0	1   -1
+tipdown.mod	0	1	0   -1
+rephasor.mod	0	1	0   -1
+arfigrad.mod 0   0   0   5696
