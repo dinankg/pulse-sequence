@@ -1,9 +1,0 @@
-Total number of unique cores
-6
-fname	duration(us)	hasRF?	hasDAQ? hastrigout?
-readout.mod	0	0	1   -1
-fatsat.mod	0	1	0   -1
-tipdown.mod	0	1	0   -1
-rephasor.mod	0	1	0   -1
-crusher.mod	0	0	0   -1
-dwgrad.mod 0   0   0   200
