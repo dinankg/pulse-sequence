@@ -190,6 +190,7 @@ end
 %}
 %%
 if ACTUAL_SCAN
+    sprintf('This is used internally at fMRI lab at UMICH.')
     exp_number = 0;
     while true
         exp_number = exp_number + 1;
@@ -204,8 +205,7 @@ if ACTUAL_SCAN
     system(append('tar -xvf ','./',exp_name,'/','ossi.tar',...
         ' -C ',exp_name,'/'));
 
-    % save('seq.mat','seq')
-    % [status] = copyfile('seq.mat', ['./',exp_name,'/seq.mat']);
+
     save('variables')
     [status] = copyfile('variables.mat', ['./',exp_name,'/variables.mat']);
 
