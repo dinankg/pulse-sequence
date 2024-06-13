@@ -1,5 +1,0 @@
-Total number of unique cores
-2
-fname dur(us) hasRF hasADC trigpos
-module1.mod	6540	1	0	-1
-module2.mod	22948	0	1	-1

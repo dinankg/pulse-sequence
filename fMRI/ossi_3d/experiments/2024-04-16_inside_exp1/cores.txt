@@ -1,4 +1,0 @@
-Total number of cores
-1
-nmodules modIds... 
-3	1	2	0
