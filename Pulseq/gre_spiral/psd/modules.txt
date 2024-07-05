@@ -1,8 +1,8 @@
 Total number of unique cores
 24
 fname dur(us) hasRF hasADC trigpos
-module1.mod	9532	1	0	-1
-module2.mod	3640	1	0	-1
+module1.mod	10032	1	0	-1
+module2.mod	3680	1	0	-1
 module3.mod	520	0	0	-1
 module4.mod	9300	0	0	-1
 module5.mod	920	0	0	-1

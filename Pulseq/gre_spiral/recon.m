@@ -4,6 +4,7 @@
 %% Loading Data
 clear
 dname = './data';
+dname = '/mnt/storage/dinankg/scanarchive/Exam05476/Series7';
 flist = dir([dname,'/Scan*.h5']);
 file_name = flist(end).name; %Assuming last file is the one we want
 fname = [dname,'/',file_name];
@@ -18,9 +19,11 @@ save_kdata = 1; % Flag to save Raw Data
 save_img = 1; % Flag to take 3D NUFFT and save the image
 %% Loading the k-space traj
 kfolder = './experiments/';
-dt = '2024-06-13';
+kfolder = './psd/experiments/';
+
+dt = '2024-07-05';
 scanner ='inside';
-exp_num = '1';
+exp_num = '6';
 extra = '';
 var_name = [kfolder,dt,'_',scanner,'_exp',exp_num,extra,'/variables.mat'];
 scan_variables = load(var_name);
