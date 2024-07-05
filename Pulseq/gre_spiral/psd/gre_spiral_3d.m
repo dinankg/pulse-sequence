@@ -13,26 +13,40 @@ gamT = 4.2576e7;   % Hz/Tesla
 gamG = gamT/1e4;    % Hz/Gauss
 
 %% Basic Scan Parameters
-ACTUAL_SCAN = 1;
+ACTUAL_SCAN = 0;
 seq_params.scanner = 'inside';
 seq_params.trig = 0;
 seq_params.TR = 40e-3;
-seq_params.ntp = 10;
+%TE is set to minTE for now.
+seq_params.ntp = 5;
 seq_params.nDummyLoops = 2;
-seq_params.nshot_spiral = 4;
+seq_params.nshot_spiral = 12;
 seq_params = getparams(seq_params); % Important scan info here
 seq_params.oversamp=100;%Fully sample these many spiral samples.
 
 sys=mr.opts('maxGrad',seq_params.maxgrad,'gradUnit', ...
     'mT/m','maxSlew',seq_params.maxslew, 'slewUnit', 'T/m/s');
 sys.adcDeadTime=1e-5;
-%% RF pulse segment
+% sys.rfRasterTime=1e-5;
 seq = mr.Sequence(sys);
 
+%% Fatsat pulse: Copied from Pulseq demo
+% Create fat-sat pulse
+B0=3; % 1.5 2.89 3.0
+sat_ppm=-3.45;
+sat_freq=sat_ppm*1e-6*B0*sys.gamma;
+rf_fs = mr.makeGaussPulse(110*pi/180,'system',sys,'Duration',8e-3,...
+    'bandwidth',abs(sat_freq),'freqOffset',sat_freq);
+rf_fs.deadTime=100e-6;% 100us deadtime (mostly needed for GE)
+rf_fs.delay =rf_fs.deadTime;
+
+gz_fs = mr.makeTrapezoid('z',sys,'delay',mr.calcDuration(rf_fs),'Area',1/(seq_params.fov(1)/seq_params.N(1))*4); % spoil up to 0.1mm%% RF pulse segment
+%%
 % RF pulse
+seq_params.rf_slice_fact=0.9; % Excite a smaller slice than prescribed
 [rf, gz_rf,gzReph] = mr.makeSincPulse(seq_params.alpha*pi/180, 'Duration', 3e-3, ...
-    'SliceThickness', seq_params.slicethickness, 'apodization', 0.42, ...
-    'timeBwProduct', 4, 'system', sys);
+    'SliceThickness', seq_params.slicethickness*seq_params.rf_slice_fact, 'apodization', 0.42, ...
+    'timeBwProduct', 6, 'system', sys);
 gzPreph = gzReph;
 rf.delay = rf.deadTime;
 gz_rf.delay = ceil((mr.calcDuration(gzReph))/sys.gradRasterTime)*sys.gradRasterTime;
@@ -40,17 +54,9 @@ rf.delay = gz_rf.delay+gz_rf.riseTime; %-5e-7
 gzReph.delay =  mr.calcDuration(gz_rf);
 gzcomb = mr.addGradients({gzPreph,gz_rf,gzReph},'system',sys);
 %% Spiral segment
-% Parameters for spiral readouts in toppe compatible units
-ge_sys = [];
-maxgrad_gcm = grad_convertion(seq_params.maxgrad);
-ge_sys.fov = seq_params.fov.*100;
-ge_sys.N = seq_params.N;
-ge_sys.raster = sys.gradRasterTime;
-ge_sys.maxGrad = maxgrad_gcm;  % assumes G/cm
-
 % create spiral readout with multiple shot
 [gx1,gy1,t,spiral_readout_length] = makevdspiral(seq_params.fov(1)*100,seq_params.N(1), ...
-    seq_params.nshot_spiral,seq_params.oversamp,ge_sys.maxGrad, ...
+    seq_params.nshot_spiral,seq_params.oversamp,seq_params.maxgrad/10, ...
     0.9*seq_params.maxslew ,sys.gradRasterTime);
 %making it divisible by 10
 gx1 = [gx1;zeros(10-rem(length(gx1),10),size(gx1,2))];
@@ -89,6 +95,7 @@ g_spoilz= mr.makeTrapezoid('z', ...
 
 %% Define delays
 TRmin = mr.calcDuration(gzcomb)+mr.calcDuration(gx{1}) + 2*mr.calcDuration(z_enc_trap)+mr.calcDuration(g_spoilz);
+TRmin = TRmin + mr.calcDuration(gz_fs)
 delayTR = ceil((seq_params.TR - TRmin)/seq.gradRasterTime)*seq.gradRasterTime;
 
 %% Putting it all together
@@ -110,8 +117,10 @@ for itp = 0:seq_params.ntp % 0th timepoint will serve as disdaq.
                     % transmit and receive phase cycling
                     rf.phaseOffset = rf.phaseOffset+deg2rad(117);
                     adc.phaseOffset = adc.phaseOffset+deg2rad(117);
+                    %FATSAT
+                    seq.addBlock(rf_fs,gz_fs, mr.makeLabel('SET', 'TRID', segmentID))%                    
                     %RF
-                    seq.addBlock(rf,gzcomb, mr.makeLabel('SET', 'TRID', segmentID))%
+                    seq.addBlock(rf,gzcomb)
                     %kz-encode
                     seq.addBlock(mr.scaleGrad(z_enc_trap,seq_params.zp_scale(ikz)));
                     if adc_flag
@@ -149,7 +158,7 @@ else
     fprintf('\n');
 end
 
-seq.plot('timerange',[0 seq_params.TR]); %*seq_params.nc
+seq.plot('timerange',[0 seq_params.TR]); 
 %
 % k-space trajectory calculation
 % [ktraj_adc, t_adc, ktraj, t_ktraj, t_excitation, t_refocusing] = seq.calculateKspacePP();
@@ -163,7 +172,7 @@ seq.plot('timerange',[0 seq_params.TR]); %*seq_params.nc
 % seq.setDefinition('adcRasterTime', seq_params.adcRasterTime);
 % seq.setDefinition('blockDurationRaster', seq_params.gradRasterTime);
 seq.setDefinition('FOV', seq_params.fov);
-seq.setDefinition('Name', 'OSSI');
+seq.setDefinition('Name', '3DGRE');
 seq.write('external.seq');
 
 %% Seeing in GE format to make sure units look ok
@@ -175,9 +184,9 @@ sysGE = toppe.systemspecs('maxGrad', 10, ... % G/cm
     'psd_rf_wait', 148, ... % RF/gradient delay (us)
     'psd_grd_wait', 156); % ADC/gradient delay (us)
 
-seq2ge('external.seq',sysGE,'ossi.tar');
+seq2ge('external.seq',sysGE,'gre.tar');
 
-system('tar -xvf ossi.tar');
+system('tar -xvf gre.tar');
 
 figure; toppe.plotseq(sysGE,'timeRange',[0 seq_params.TR]); % Plot 1 frame
 
@@ -200,9 +209,9 @@ if ACTUAL_SCAN
             break
         end
     end
-    [status] = copyfile('ossi.tar', ['./',exp_name,'/ossi.tar']);
-    [status] = copyfile('external.seq', ['./',exp_name,'/ossi.seq']);
-    system(append('tar -xvf ','./',exp_name,'/','ossi.tar',...
+    [status] = copyfile('gre.tar', ['./',exp_name,'/gre.tar']);
+    [status] = copyfile('external.seq', ['./',exp_name,'/gre.seq']);
+    system(append('tar -xvf ','./',exp_name,'/','gre.tar',...
         ' -C ',exp_name,'/'));
 
 
