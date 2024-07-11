@@ -12,8 +12,11 @@ clear
 gamT = 4.2576e7;   % Hz/Tesla
 gamG = gamT/1e4;    % Hz/Gauss
 
+%% Flag to save ktraj
+save_ktraj=0;
+%%
 %% Basic Scan Parameters
-ACTUAL_SCAN = 1;
+
 seq_params.scanner = 'inside';
 seq_params.trig = 0;
 seq_params.TR = 40e-3;
@@ -204,28 +207,61 @@ for k=1:5:300
     drawnow
 end
 %}
-%%
-if ACTUAL_SCAN
-    sprintf('This is used internally at fMRI lab at UMICH.')
-    exp_number = 0;
-    while true
-        exp_number = exp_number + 1;
-        exp_name = ['experiments/',datestr(now,'yyyy-mm-dd_'),seq_params.scanner,'_exp',num2str(exp_number)];
-        if ~isfolder(exp_name)
-            mkdir(exp_name)
-            break
+if(save_ktraj)
+dt = adc.dwell;%sec
+ktraj = cat(3,cumtrapz(gx1),cumtrapz(gy1))*dt*gamG*100; %1/m % klen x nshots x 2
+ktraj = permute(ktraj,[1,3,2]);% klen x 2 x nshots
+n_adc = floor(adc.numSamples/4)*4;
+ktraj=ktraj(1:n_adc,:,:); % Cropping only the acquired part
+ks = ktraj.*(2*pi*seq_params.fov(1)/seq_params.N(1));
+%% Sorting the kdata and ktrah according to shots
+ks = squeeze(ks);kspace=zeros(size(ks,1),3,seq_params.N(3),seq_params.nshot_spiral);
+n=0;
+for nt = 1: seq_params.ntp
+    for ns = 1:seq_params.nshot_spiral
+        for kz = 1:seq_params.N(3)
+            kz_tmp = seq_params.zp_scale(kz)*repmat(seq_params.kzmax ,[length(ks),1]);
+            ks(:,3,ns) = kz_tmp*(2*pi*seq_params.fov(3)/seq_params.N(3));
+            kspace(:,:,kz,ns) = ks(:,:,ns);
+            n=n+1;
         end
     end
-    [status] = copyfile('3dgre.tar', ['./',exp_name,'/3dgre.tar']);
-    [status] = copyfile('3dgre.seq', ['./',exp_name,'/3dgre.seq']);
-    system(append('tar -xvf ','./',exp_name,'/','3dgre.tar',...
-        ' -C ',exp_name,'/'));
-
-
-    save('variables')
-    [status] = copyfile('variables.mat', ['./',exp_name,'/variables.mat']);
-
-
-    toppe.utils.coppe('target',seq_params.scanner,'cv',788,'use_pw',1);
 end
+% kspace size is klen x 3 x kz x nshots
+% Assumes same ktraj across timepoints
+sp_number=0
+while true
+    sp_number = sp_number + 1
+    sp_name = ['spiral_ktraj',num2str(sp_number),'.mat'];
+
+    if ~isfile(sp_name)
+        sprintf('Saving kspace traj as spiral_ktraj%1d...',sp_number)
+        save(sp_name,'kspace','seq_params')
+        break
+    end
+end
+%%
+% if ACTUAL_SCAN
+%     sprintf('This is used internally at fMRI lab at UMICH.')
+%     exp_number = 0;
+%     while true
+%         exp_number = exp_number + 1;
+%         exp_name = ['experiments/',datestr(now,'yyyy-mm-dd_'),seq_params.scanner,'_exp',num2str(exp_number)];
+%         if ~isfolder(exp_name)
+%             mkdir(exp_name)
+%             break
+%         end
+%     end
+%     [status] = copyfile('3dgre.tar', ['./',exp_name,'/3dgre.tar']);
+%     [status] = copyfile('3dgre.seq', ['./',exp_name,'/3dgre.seq']);
+%     system(append('tar -xvf ','./',exp_name,'/','3dgre.tar',...
+%         ' -C ',exp_name,'/'));
+% 
+% 
+%     save('variables')
+%     [status] = copyfile('variables.mat', ['./',exp_name,'/variables.mat']);
+% 
+% 
+%     toppe.utils.coppe('target',seq_params.scanner,'cv',788,'use_pw',1);
+% end
 

@@ -71,7 +71,7 @@ if save_img
     kt = reshape(permute(squeeze(kspace),[1,3,4,2]),[],3); % Combining shots. % size is (klen*shots) x 2
     Gn = Gnufft(mask, [{kt}, nufft_args(:)']);
     dcf = pipe_menon_dcf(Gn);
-    %% Performing 3D NUFFT
+    % Performing 3D NUFFT
     for tp = 1: size(kdata,5) %timepoints loop
         k = kdata(:,:,:,:,tp); %size is klen x coil x kz x rot
         k = permute(k,[1,3,4,2]); %size is klen x kz x rot x coil
