@@ -13,11 +13,11 @@ gamT = 4.2576e7;   % Hz/Tesla
 gamG = gamT/1e4;    % Hz/Gauss
 
 %% Flag to save ktraj
-save_ktraj=0;
+save_ktraj=1;
 %%
 %% Basic Scan Parameters
 
-seq_params.scanner = 'inside';
+seq_params.scanner = 'inside'; %For use at Michigan
 seq_params.trig = 0;
 seq_params.TR = 40e-3;
 %TE is set to minTE for now.
@@ -26,7 +26,7 @@ seq_params.nDummyLoops = 2;
 seq_params.nshot_spiral = 12;
 seq_params = getparams(seq_params); % Important scan info here
 seq_params.oversamp=100;%Fully sample these many spiral samples.
-
+seq_params.scanner_type = 'philips'; % or 'ge' or 'seimens'
 %Option to turn fatsat on/off
 seq_params.dofatsat = 1;
 
@@ -169,18 +169,7 @@ else
 end
 
 seq.plot('timerange',[0 seq_params.TR]);
-%
-% k-space trajectory calculation
-% [ktraj_adc, t_adc, ktraj, t_ktraj, t_excitation, t_refocusing] = seq.calculateKspacePP();
-%
-% % plot k-spaces
-% figure; plot(t_ktraj, ktraj'); title('k-space components as functions of time'); % plot the entire k-space trajectory
-% figure; plot(ktraj(1,:),ktraj(2,:),'b'); % a 2D plot
-% hold;plot(ktraj_adc(1,:),ktraj_adc(2,:),'r.'); title('2D k-space');
 %% Output for execution
-% seq.setDefinition('gradRasterTime', seq_params.gradRasterTime);
-% seq.setDefinition('adcRasterTime', seq_params.adcRasterTime);
-% seq.setDefinition('blockDurationRaster', seq_params.gradRasterTime);
 seq.setDefinition('FOV', seq_params.fov);
 seq.setDefinition('Name', '3DGRE');
 seq.write('3dgre.seq');
@@ -241,6 +230,8 @@ if(save_ktraj)
         end
     end
 end
+delete('*.mod')
+
 %%
 % if ACTUAL_SCAN
 %     sprintf('This is used internally at fMRI lab at UMICH.')

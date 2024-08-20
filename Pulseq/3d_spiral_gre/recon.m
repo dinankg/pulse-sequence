@@ -3,7 +3,7 @@
 % needs MIRT toolbox
 %% Loading Data
 clear
-dname = './data';
+dname = 'Series7';
 flist = dir([dname,'/Scan*.h5']);
 file_name = flist(end).name; %Assuming last file is the one we want
 fname = [dname,'/',file_name];
